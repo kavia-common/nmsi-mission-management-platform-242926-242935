@@ -14,4 +14,13 @@
     <string name="auth_password">Password</string>
     <string name="auth_demo_sign_in">Sign in (Demo)</string>
     <string name="auth_sign_out">Sign out</string>
+
+    <string name="role_admin">Admin</string>
+    <string name="role_staff">Staff</string>
+    <string name="role_volunteer">Volunteer</string>
+    <string name="role_help">Demo mode: role controls which sections you can see and access.</string>
+
+    <string name="auth_signed_in_as">Signed in as</string>
+    <string name="auth_role">Role</string>
+    <string name="auth_access_denied">Access denied for your role.</string>
 </resources>

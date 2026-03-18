@@ -4,10 +4,21 @@ package org.example.app.model
  * Data models used by the Mission Management UI.
  */
 
+import org.example.app.auth.AppRole
+
 data class User(
     val id: String,
     val name: String,
     val email: String,
+    /**
+     * Primary application role used for navigation & section access in this demo app.
+     * (ADMIN / STAFF / VOLUNTEER)
+     */
+    val appRole: AppRole,
+    /**
+     * Additional role labels for future expansion (e.g. FINANCE, COORDINATOR).
+     * Not yet used for granular permissions in this demo, but kept to preserve existing structure.
+     */
     val roles: List<String>,
 )
 

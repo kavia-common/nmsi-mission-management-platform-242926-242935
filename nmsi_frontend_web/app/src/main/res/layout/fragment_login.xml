@@ -62,6 +62,13 @@
                     android:inputType="textPassword" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <include
+                android:id="@+id/roleSelectorInclude"
+                layout="@layout/view_role_selector"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnDemoSignIn"
                 android:layout_width="match_parent"

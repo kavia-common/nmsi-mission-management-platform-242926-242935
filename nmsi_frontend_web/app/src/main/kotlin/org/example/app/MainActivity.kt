@@ -2,11 +2,14 @@ package org.example.app
 
 import android.content.res.ColorStateList
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import org.example.app.auth.AppSection
 import org.example.app.auth.AuthSession
+import org.example.app.auth.RoleAccess
 import org.example.app.ui.ListFragment
 import org.example.app.ui.LoginFragment
 import org.example.app.ui.OverviewFragment
@@ -15,8 +18,11 @@ import org.example.app.ui.OverviewFragment
  * App entry point.
  *
  * Hosts a sidebar-driven navigation shell with auth scaffolding and mock-backed data screens.
+ * Navigation visibility and access are role-based (Admin/Staff/Volunteer) in demo mode.
  */
 class MainActivity : AppCompatActivity(), LoginFragment.Listener {
+
+    private lateinit var toolbar: MaterialToolbar
 
     private lateinit var navOverview: MaterialButton
     private lateinit var navDonations: MaterialButton
@@ -32,12 +38,12 @@ class MainActivity : AppCompatActivity(), LoginFragment.Listener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
+        toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
 
         bindNavViews()
         wireNavigation()
-        updateAuthButton()
+        updateAuthUi()
 
         if (savedInstanceState == null) {
             if (AuthSession.isSignedIn()) {
@@ -60,18 +66,18 @@ class MainActivity : AppCompatActivity(), LoginFragment.Listener {
     }
 
     private fun wireNavigation() {
-        navOverview.setOnClickListener { ensureSignedIn { navigateToOverview() } }
-        navDonations.setOnClickListener { ensureSignedIn { navigateToList(ListFragment.Kind.DONATIONS) } }
-        navVolunteers.setOnClickListener { ensureSignedIn { navigateToList(ListFragment.Kind.VOLUNTEERS) } }
-        navProjects.setOnClickListener { ensureSignedIn { navigateToList(ListFragment.Kind.PROJECTS) } }
-        navDonorCrm.setOnClickListener { ensureSignedIn { navigateToList(ListFragment.Kind.DONOR_CRM) } }
-        navReports.setOnClickListener { ensureSignedIn { navigateToList(ListFragment.Kind.REPORTS) } }
-        navSettings.setOnClickListener { ensureSignedIn { navigateToList(ListFragment.Kind.SETTINGS) } }
+        navOverview.setOnClickListener { ensureAuthorized(AppSection.OVERVIEW) { navigateToOverview() } }
+        navDonations.setOnClickListener { ensureAuthorized(AppSection.DONATIONS) { navigateToList(ListFragment.Kind.DONATIONS) } }
+        navVolunteers.setOnClickListener { ensureAuthorized(AppSection.VOLUNTEERS) { navigateToList(ListFragment.Kind.VOLUNTEERS) } }
+        navProjects.setOnClickListener { ensureAuthorized(AppSection.PROJECTS) { navigateToList(ListFragment.Kind.PROJECTS) } }
+        navDonorCrm.setOnClickListener { ensureAuthorized(AppSection.DONOR_CRM) { navigateToList(ListFragment.Kind.DONOR_CRM) } }
+        navReports.setOnClickListener { ensureAuthorized(AppSection.REPORTS) { navigateToList(ListFragment.Kind.REPORTS) } }
+        navSettings.setOnClickListener { ensureAuthorized(AppSection.SETTINGS) { navigateToList(ListFragment.Kind.SETTINGS) } }
 
         btnAuth.setOnClickListener {
             if (AuthSession.isSignedIn()) {
                 AuthSession.signOut()
-                updateAuthButton()
+                updateAuthUi()
                 navigateToLogin()
             } else {
                 navigateToLogin()
@@ -79,12 +85,32 @@ class MainActivity : AppCompatActivity(), LoginFragment.Listener {
         }
     }
 
-    private fun ensureSignedIn(action: () -> Unit) {
+    private fun ensureAuthorized(section: AppSection, action: () -> Unit) {
         if (!AuthSession.isSignedIn()) {
             navigateToLogin()
             return
         }
+
+        val role = AuthSession.getRole()
+        if (!RoleAccess.canAccessSection(role, section)) {
+            // Block access even if invoked (defense-in-depth).
+            supportActionBar?.subtitle = getString(R.string.auth_access_denied)
+            return
+        }
+
         action()
+    }
+
+    private fun applyRoleBasedNavigationVisibility() {
+        val role = AuthSession.getRole()
+
+        navOverview.visibility = if (RoleAccess.canAccessSection(role, AppSection.OVERVIEW)) View.VISIBLE else View.GONE
+        navDonations.visibility = if (RoleAccess.canAccessSection(role, AppSection.DONATIONS)) View.VISIBLE else View.GONE
+        navVolunteers.visibility = if (RoleAccess.canAccessSection(role, AppSection.VOLUNTEERS)) View.VISIBLE else View.GONE
+        navProjects.visibility = if (RoleAccess.canAccessSection(role, AppSection.PROJECTS)) View.VISIBLE else View.GONE
+        navDonorCrm.visibility = if (RoleAccess.canAccessSection(role, AppSection.DONOR_CRM)) View.VISIBLE else View.GONE
+        navReports.visibility = if (RoleAccess.canAccessSection(role, AppSection.REPORTS)) View.VISIBLE else View.GONE
+        navSettings.visibility = if (RoleAccess.canAccessSection(role, AppSection.SETTINGS)) View.VISIBLE else View.GONE
     }
 
     private fun setSelectedNav(selected: MaterialButton?) {
@@ -129,6 +155,21 @@ class MainActivity : AppCompatActivity(), LoginFragment.Listener {
     }
 
     private fun navigateToList(kind: ListFragment.Kind) {
+        val section = when (kind) {
+            ListFragment.Kind.DONATIONS -> AppSection.DONATIONS
+            ListFragment.Kind.VOLUNTEERS -> AppSection.VOLUNTEERS
+            ListFragment.Kind.PROJECTS -> AppSection.PROJECTS
+            ListFragment.Kind.DONOR_CRM -> AppSection.DONOR_CRM
+            ListFragment.Kind.REPORTS -> AppSection.REPORTS
+            ListFragment.Kind.SETTINGS -> AppSection.SETTINGS
+        }
+
+        // If role visibility changes while in-app, avoid navigating into a blocked section.
+        if (!RoleAccess.canAccessSection(AuthSession.getRole(), section)) {
+            supportActionBar?.subtitle = getString(R.string.auth_access_denied)
+            return
+        }
+
         supportActionBar?.title = when (kind) {
             ListFragment.Kind.DONATIONS -> getString(R.string.nav_donations)
             ListFragment.Kind.VOLUNTEERS -> getString(R.string.nav_volunteers)
@@ -154,12 +195,21 @@ class MainActivity : AppCompatActivity(), LoginFragment.Listener {
             .commit()
     }
 
-    private fun updateAuthButton() {
+    private fun updateAuthUi() {
         btnAuth.text = if (AuthSession.isSignedIn()) getString(R.string.auth_sign_out) else getString(R.string.auth_sign_in)
+
+        val user = AuthSession.getUser()
+        supportActionBar?.subtitle = if (user != null) {
+            "${getString(R.string.auth_signed_in_as)} ${user.name} • ${user.appRole}"
+        } else {
+            null
+        }
+
+        applyRoleBasedNavigationVisibility()
     }
 
     override fun onSignedIn() {
-        updateAuthButton()
+        updateAuthUi()
         navigateToOverview()
     }
 }

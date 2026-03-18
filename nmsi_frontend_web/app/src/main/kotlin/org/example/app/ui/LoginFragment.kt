@@ -5,11 +5,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.RadioButton
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import org.example.app.R
+import org.example.app.auth.AppRole
 import org.example.app.auth.AuthSession
 
 /**
@@ -37,6 +39,17 @@ class LoginFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_login, container, false)
     }
 
+    private fun getSelectedRole(root: View): AppRole {
+        val admin: RadioButton = root.findViewById(R.id.roleAdmin)
+        val staff: RadioButton = root.findViewById(R.id.roleStaff)
+        // Volunteer is default if none matched
+        return when {
+            admin.isChecked -> AppRole.ADMIN
+            staff.isChecked -> AppRole.STAFF
+            else -> AppRole.VOLUNTEER
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val email: TextInputEditText = view.findViewById(R.id.inputEmail)
         val status: TextView = view.findViewById(R.id.loginStatus)
@@ -44,8 +57,10 @@ class LoginFragment : Fragment() {
 
         btn.setOnClickListener {
             val e = email.text?.toString() ?: ""
-            val user = AuthSession.signInAsDemo(e)
-            status.text = "Signed in as ${user.name} (${user.email})"
+            val role = getSelectedRole(view)
+
+            val user = AuthSession.signInAsDemo(e, role)
+            status.text = "Signed in as ${user.name} (${user.appRole}) • ${user.email}"
             listener?.onSignedIn()
         }
     }

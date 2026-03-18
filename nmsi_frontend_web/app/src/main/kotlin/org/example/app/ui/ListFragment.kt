@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import org.example.app.R
 import org.example.app.api.MockApiClient
+import org.example.app.auth.AuthSession
 
 /**
  * Generic list fragment that displays one of the app sections using mock API data.
@@ -53,8 +54,10 @@ class ListFragment : Fragment() {
         }
 
         Thread {
+            val role = AuthSession.getRole()
+
             val rows = when (kind) {
-                Kind.DONATIONS -> api.listDonations().map {
+                Kind.DONATIONS -> api.listDonations(role).map {
                     SimpleRowAdapter.RowItem("${it.donorName} — ₹${it.amountInr}", "${it.dateIso} • ${it.status}")
                 }
 
@@ -66,11 +69,11 @@ class ListFragment : Fragment() {
                     SimpleRowAdapter.RowItem(it.name, "${it.region} • ${it.status}")
                 }
 
-                Kind.DONOR_CRM -> api.listDonorCrm().map {
+                Kind.DONOR_CRM -> api.listDonorCrm(role).map {
                     SimpleRowAdapter.RowItem(it.title, it.subtitle)
                 }
 
-                Kind.REPORTS -> api.listReports().map {
+                Kind.REPORTS -> api.listReports(role).map {
                     SimpleRowAdapter.RowItem(it.title, it.subtitle)
                 }
 
@@ -78,11 +81,22 @@ class ListFragment : Fragment() {
                     SimpleRowAdapter.RowItem("Organization", "National Missionary Society of India (NMSI)"),
                     SimpleRowAdapter.RowItem("Theme", "Ocean Professional"),
                     SimpleRowAdapter.RowItem("Data Source", "Mock API (no backend connected)"),
+                    SimpleRowAdapter.RowItem("Signed-in Role", role?.name ?: "None"),
                 )
             }
 
             requireActivity().runOnUiThread {
                 adapter.submit(rows)
+
+                // If empty, provide a slightly more helpful message for role-filtered sections.
+                empty.text = if (rows.isEmpty() && role != null) {
+                    "No items (may be restricted for role: ${role.name})"
+                } else if (rows.isEmpty()) {
+                    "No items"
+                } else {
+                    empty.text
+                }
+
                 empty.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
             }
         }.start()

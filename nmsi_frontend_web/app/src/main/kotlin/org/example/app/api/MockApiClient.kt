@@ -1,5 +1,6 @@
 package org.example.app.api
 
+import org.example.app.auth.AppRole
 import org.example.app.model.ActivityItem
 import org.example.app.model.Donation
 import org.example.app.model.MissionProject
@@ -47,9 +48,13 @@ class MockApiClient {
     }
 
     // PUBLIC_INTERFACE
-    fun listDonations(): List<Donation> {
-        /** Returns donation list items. */
+    fun listDonations(role: AppRole? = AppRole.ADMIN): List<Donation> {
+        /** Returns donation list items, filtered by role in demo mode. */
         simulateLatency()
+
+        // Volunteers should not see finance data.
+        if (role == AppRole.VOLUNTEER) return emptyList()
+
         return listOf(
             Donation("d1", "Joseph", 5000, "2026-03-18", "Completed"),
             Donation("d2", "Maria", 12000, "2026-03-16", "Completed"),
@@ -80,9 +85,12 @@ class MockApiClient {
     }
 
     // PUBLIC_INTERFACE
-    fun listDonorCrm(): List<ActivityItem> {
-        /** Returns donor CRM items (mocked as activity-like entries). */
+    fun listDonorCrm(role: AppRole? = AppRole.ADMIN): List<ActivityItem> {
+        /** Returns donor CRM items (mocked as activity-like entries), filtered by role in demo mode. */
         simulateLatency()
+
+        if (role == AppRole.VOLUNTEER) return emptyList()
+
         return listOf(
             ActivityItem("c1", "Follow-up due", "Call Maria about recurring donation", "2026-03-18T09:30:00Z"),
             ActivityItem("c2", "Thank-you note", "Send receipt to Joseph", "2026-03-18T10:00:00Z"),
@@ -90,9 +98,12 @@ class MockApiClient {
     }
 
     // PUBLIC_INTERFACE
-    fun listReports(): List<ActivityItem> {
-        /** Returns report items. */
+    fun listReports(role: AppRole? = AppRole.ADMIN): List<ActivityItem> {
+        /** Returns report items, filtered by role in demo mode. */
         simulateLatency()
+
+        if (role == AppRole.VOLUNTEER) return emptyList()
+
         val month = Random.nextInt(1, 12).toString().padStart(2, '0')
         return listOf(
             ActivityItem("r1", "Monthly Donations Report", "2026-$month", "2026-03-18T00:00:00Z"),
