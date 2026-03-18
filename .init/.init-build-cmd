@@ -1,0 +1,4 @@
+{
+    "command": "./gradlew assembleDebug",
+    "working_directory": "/home/kavia/workspace/code-generation/nmsi-mission-management-platform-242926-242935/nmsi_frontend_web"
+}
